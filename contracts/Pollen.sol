@@ -40,7 +40,7 @@ contract Pollen {
     constructor() {
         xrz = IERC20(0xDEcEF803dC694341Cf2dA8A1efB67AD81B397519); //atualizado
         DAI = IERC20(0x31F42841c2db5173425b5223809CF3A38FEde360); //atualizado
-        PollenNFT = IPollenNft(0x5Ceb8012C282FF841d0e11cF4b81d1713ecc3779); // atualizado
+        PollenNFT = IPollenNft(0x1A82611c4E5FFa53CaF2576644d53e0eCE212500); // atualizado
         DAIPriceFeed = AggregatorV3Interface(
             0x2bA49Aaa16E6afD2a993473cfB70Fa8559B523cF
         );
