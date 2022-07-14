@@ -57,7 +57,7 @@ contract Pollen {
         require(amount > 0, "You need to input an mount bigger than 0");
 
         // Approve transfer on the ERC20 contract
-        bool success = DAI.approve(cTokenAddress, 999999999999999999);
+        bool success = DAI.approve(cTokenAddress, amount);
 
         require(success, "not approved");
         DAI.transferFrom(msg.sender, address(this), amount);
