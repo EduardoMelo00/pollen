@@ -1,15 +1,18 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "hardhat/console.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "../interface/AggregatorV3Interface.sol";
 import "../interface/IPollenNft.sol";
 import "../interface/ICErc20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract Pollen {
+contract Pollen is ReentrancyGuard, Pausable, Ownable {
     string public URI = "https://jsonkeeper.com/b/W90P";
     IERC20 public DAI;
     IPollenNft public PollenNFT;
@@ -23,6 +26,7 @@ contract Pollen {
     ICErc20 public cToken;
     uint256 public stakeOption;
     address public cTokenAddress = 0xbc689667C13FB2a04f09272753760E38a95B998C;
+    uint256 public rate;
 
     struct StakedToken {
         uint256 tokenId;
@@ -37,27 +41,44 @@ contract Pollen {
     using Counters for Counters.Counter;
     Counters.Counter private _tokenIds;
 
+
+
+    // function Initiliazer() public {
+
+    //     xrz = IERC20(0xDEcEF803dC694341Cf2dA8A1efB67AD81B397519); //atualizado
+    //     DAI = IERC20(0x31F42841c2db5173425b5223809CF3A38FEde360); //atualizado
+    //     PollenNFT = IPollenNft(0x5F68716878633B8f30405F606bF4512Cf8e575E0); // atualizado
+    //     DAIPriceFeed = AggregatorV3Interface(
+    //         0x2bA49Aaa16E6afD2a993473cfB70Fa8559B523cF
+    //     );
+    //     cToken = ICErc20(cTokenAddress); //atualizado
+
+    // }
+
     constructor() {
         xrz = IERC20(0xDEcEF803dC694341Cf2dA8A1efB67AD81B397519); //atualizado
         DAI = IERC20(0x31F42841c2db5173425b5223809CF3A38FEde360); //atualizado
-        PollenNFT = IPollenNft(0x1A82611c4E5FFa53CaF2576644d53e0eCE212500); // atualizado
+        PollenNFT = IPollenNft(0x3f6055A2716af802137B7C3f38eB38c7b44372cB); // atualizado
         DAIPriceFeed = AggregatorV3Interface(
             0x2bA49Aaa16E6afD2a993473cfB70Fa8559B523cF
-        );
+        ); 
         cToken = ICErc20(cTokenAddress); //atualizado
+       //rate = cToken.exchangeRateCurrent();
     }
 
-    function approveCercToken(uint256 amount) public {
-        DAI.approve(cTokenAddress, amount);
-    }
-
-    function stake(uint256 amount, uint256 period) public returns (uint256) {
+    function stake(uint256 amount, uint256 period) 
+        public 
+        whenNotPaused
+        nonReentrant
+        returns (uint256) 
+    
+     {
         uint256 newItemId;
 
         require(amount > 0, "You need to input an mount bigger than 0");
 
         // Approve transfer on the ERC20 contract
-        bool success = DAI.approve(cTokenAddress, amount);
+        bool success = DAI.approve(cTokenAddress, 99999999999999999999);
 
         require(success, "not approved");
         DAI.transferFrom(msg.sender, address(this), amount);
@@ -91,6 +112,15 @@ contract Pollen {
         return rewardPriceUsd / xrzPrice / 100;
     }
 
+
+     function getBalanceUnder(address sender) public returns(uint256) {
+
+         uint tokens =  cToken.balanceOfUnderlying(sender);
+         return tokens;
+
+     }
+     
+
     function getReward(address _owner, uint256 tokenIndex) public {
         // require(PollenNFT.ownerOf(tokenIndex) == _owner,"You don't own any Pollen NFT." );
         require(
@@ -101,6 +131,7 @@ contract Pollen {
         rewards[tokenIndex].lastHarvestTimestamp = block.timestamp;
         xrz.transfer(msg.sender, reward);
     }
+
 
     function reedemCompound(uint256 _amount, uint256 tokenIndex)
         public
@@ -113,18 +144,29 @@ contract Pollen {
         return value;
     }
 
-    function unstake(address _owner, uint256 tokenIndex) public {
+
+    function unstake(address _owner, uint256 tokenIndex) 
+        public
+        whenNotPaused
+        nonReentrant 
+    {
         StakedToken memory staked = rewards[tokenIndex];
         if (staked.period == 1) {
-            stakeOption = staked.startTimestamp + 5 minutes;
+            stakeOption = staked.startTimestamp + 3 minutes;
         } else {
             stakeOption = staked.startTimestamp + 10 minutes;
         }
         require(block.timestamp > stakeOption, "You still cannot withdraw");
 
-        cToken.redeemUnderlying(rewards[tokenIndex].amount);
+      
+        uint256 totalStakedComp = cToken.balanceOfUnderlying(address(this));
+        cToken.redeemUnderlying(totalStakedComp); 
+        
+        uint256 pollenProfit = totalStakedComp - staked.amount;
 
         DAI.transfer(msg.sender, rewards[tokenIndex].amount);
+
+        DAI.transfer(pollenVault, pollenProfit);
 
         getReward(_owner, tokenIndex);
         rewards[tokenIndex].startTimestamp = 0;
@@ -147,5 +189,22 @@ contract Pollen {
 
     function getTotalStaked(uint256 tokenIndex) public view returns (uint256) {
         return rewards[tokenIndex].amount;
+    }
+
+    function getTimeStamp(uint256 tokenIndex) public view returns (uint256) {
+        return rewards[tokenIndex].startTimestamp;
+    }
+
+    function getLookup(uint256 tokenIndex) public view returns (uint256) {
+        return rewards[tokenIndex].period;
+    }
+
+    function getExRate() public view returns(uint256) {
+
+        return cToken.exchangeRateCurrent();
+
+      //  uint256 total =  (cToken.balanceOf(sender) * exchangeRateMantissa);
+
+      //  return exchangeRateMantissa;   
     }
 }

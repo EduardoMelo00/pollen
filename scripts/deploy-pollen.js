@@ -12,3 +12,19 @@ async function main() {
 main().catch((error) => {
   console.error(error);
 });
+
+
+
+// async function main() {
+//   const Pollen = await ethers.getContractFactory("Pollen")
+//   console.log("Deploying Box, ProxyAdmin, and then Proxy...")
+//   const proxy = await upgrades.deployProxy(Pollen, { initializer: 'Initiliazer' })
+//   console.log("Proxy of Box deployed to:", proxy.address)
+// }
+
+// main()
+//   .then(() => process.exit(0))
+//   .catch(error => {
+//       console.error(error)
+//       process.exit(1)
+//   })
