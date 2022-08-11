@@ -1,22 +1,30 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/Counters.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "../interface/AggregatorV3Interface.sol";
 import "../interface/IPollenNft.sol";
 import "../interface/ICErc20.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract Pollen is ReentrancyGuard, Pausable, Ownable {
+import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+
+contract Pollen is
+    Initializable,
+    UUPSUpgradeable,
+    OwnableUpgradeable,
+    ReentrancyGuardUpgradeable,
+    PausableUpgradeable
+{
     string public URI = "https://jsonkeeper.com/b/W90P";
-    IERC20 public DAI;
+    IERC20Upgradeable public DAI;
     IPollenNft public PollenNFT;
-    IERC20 public xrz;
+    IERC20Upgradeable public xrz;
     AggregatorV3Interface public DAIPriceFeed;
 
     uint256 public rewardFactor = 1; // 1 = 1 per cent
@@ -38,10 +46,8 @@ contract Pollen is ReentrancyGuard, Pausable, Ownable {
 
     mapping(uint256 => StakedToken) public rewards;
 
-    using Counters for Counters.Counter;
-    Counters.Counter private _tokenIds;
-
-
+    using CountersUpgradeable for CountersUpgradeable.Counter;
+    CountersUpgradeable.Counter private _tokenIds;
 
     // function Initiliazer() public {
 
@@ -55,24 +61,30 @@ contract Pollen is ReentrancyGuard, Pausable, Ownable {
 
     // }
 
-    constructor() {
-        xrz = IERC20(0xDEcEF803dC694341Cf2dA8A1efB67AD81B397519); //atualizado
-        DAI = IERC20(0x31F42841c2db5173425b5223809CF3A38FEde360); //atualizado
+    function initialize() public initializer {
+        xrz = IERC20Upgradeable(0xDEcEF803dC694341Cf2dA8A1efB67AD81B397519); //atualizado
+        DAI = IERC20Upgradeable(0x31F42841c2db5173425b5223809CF3A38FEde360); //atualizado
         PollenNFT = IPollenNft(0x3f6055A2716af802137B7C3f38eB38c7b44372cB); // atualizado
         DAIPriceFeed = AggregatorV3Interface(
             0x2bA49Aaa16E6afD2a993473cfB70Fa8559B523cF
-        ); 
+        );
         cToken = ICErc20(cTokenAddress); //atualizado
-       //rate = cToken.exchangeRateCurrent();
+        //rate = cToken.exchangeRateCurrent();
+
+        __Ownable_init();
+        __ReentrancyGuard_init();
+        __Pausable_init();
     }
 
-    function stake(uint256 amount, uint256 period) 
-        public 
+    ///@dev required by the OZ UUPS module
+    function _authorizeUpgrade(address) internal override onlyOwner {}
+
+    function stake(uint256 amount, uint256 period)
+        public
         whenNotPaused
         nonReentrant
-        returns (uint256) 
-    
-     {
+        returns (uint256)
+    {
         uint256 newItemId;
 
         require(amount > 0, "You need to input an mount bigger than 0");
@@ -112,14 +124,10 @@ contract Pollen is ReentrancyGuard, Pausable, Ownable {
         return rewardPriceUsd / xrzPrice / 100;
     }
 
-
-     function getBalanceUnder(address sender) public returns(uint256) {
-
-         uint tokens =  cToken.balanceOfUnderlying(sender);
-         return tokens;
-
-     }
-     
+    function getBalanceUnder(address sender) public returns (uint256) {
+        uint256 tokens = cToken.balanceOfUnderlying(sender);
+        return tokens;
+    }
 
     function getReward(address _owner, uint256 tokenIndex) public {
         // require(PollenNFT.ownerOf(tokenIndex) == _owner,"You don't own any Pollen NFT." );
@@ -132,7 +140,6 @@ contract Pollen is ReentrancyGuard, Pausable, Ownable {
         xrz.transfer(msg.sender, reward);
     }
 
-
     function reedemCompound(uint256 _amount, uint256 tokenIndex)
         public
         returns (uint256)
@@ -144,11 +151,10 @@ contract Pollen is ReentrancyGuard, Pausable, Ownable {
         return value;
     }
 
-
-    function unstake(address _owner, uint256 tokenIndex) 
+    function unstake(address _owner, uint256 tokenIndex)
         public
         whenNotPaused
-        nonReentrant 
+        nonReentrant
     {
         StakedToken memory staked = rewards[tokenIndex];
         if (staked.period == 1) {
@@ -158,10 +164,9 @@ contract Pollen is ReentrancyGuard, Pausable, Ownable {
         }
         require(block.timestamp > stakeOption, "You still cannot withdraw");
 
-      
         uint256 totalStakedComp = cToken.balanceOfUnderlying(address(this));
-        cToken.redeemUnderlying(totalStakedComp); 
-        
+        cToken.redeemUnderlying(totalStakedComp);
+
         uint256 pollenProfit = totalStakedComp - staked.amount;
 
         DAI.transfer(msg.sender, rewards[tokenIndex].amount);
@@ -199,12 +204,11 @@ contract Pollen is ReentrancyGuard, Pausable, Ownable {
         return rewards[tokenIndex].period;
     }
 
-    function getExRate() public view returns(uint256) {
-
+    function getExRate() public view returns (uint256) {
         return cToken.exchangeRateCurrent();
 
-      //  uint256 total =  (cToken.balanceOf(sender) * exchangeRateMantissa);
+        //  uint256 total =  (cToken.balanceOf(sender) * exchangeRateMantissa);
 
-      //  return exchangeRateMantissa;   
+        //  return exchangeRateMantissa;
     }
 }
