@@ -2,11 +2,19 @@
 pragma solidity ^0.8.0;
 
 import "hardhat/console.sol";
-import "@openzeppelin/contracts/utils/Counters.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
 import "../interface/AggregatorV3Interface.sol";
 
-contract PollenNft is ERC721URIStorage {
+contract PollenNft is
+    Initializable,
+    UUPSUpgradeable,
+    OwnableUpgradeable,
+    ERC721URIStorageUpgradeable
+{
     struct OwnedNFT {
         uint256 tokenId;
         string tokenUri;
@@ -15,10 +23,16 @@ contract PollenNft is ERC721URIStorage {
     string public URI = "https://jsonkeeper.com/b/W90P";
     uint256 public _newItemID;
 
-    using Counters for Counters.Counter;
-    Counters.Counter private _tokenIds;
+    using CountersUpgradeable for CountersUpgradeable.Counter;
+    CountersUpgradeable.Counter private _tokenIds;
 
-    constructor() ERC721("Pollen NFT", "PNFT") {}
+    function initialize() public initializer {
+        __ERC721_init("Pollen NFT", "PNFT");
+        __Ownable_init();
+    }
+
+    ///@dev required by the OZ UUPS module
+    function _authorizeUpgrade(address) internal override onlyOwner {}
 
     function createToken(address _sender) public returns (uint256) {
         _tokenIds.increment();

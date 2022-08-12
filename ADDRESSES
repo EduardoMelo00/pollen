@@ -1,2 +1,9 @@
 PollenNft=0x1A82611c4E5FFa53CaF2576644d53e0eCE212500
 Pollen=0x7a9a7A8573fe818B3B58371F2298E9330eEa59a2
+
+Pollen
+https://ropsten.etherscan.io/address/0x746AeBd6BdBBB3111c077028a09203051A6A6304#code
+Verifying proxy: 0xd949a756fbaC9CB1D1a6EC86e2B3B7154703164A
+Contract at 0xd949a756fbaC9CB1D1a6EC86e2B3B7154703164A already verified.
+Linking proxy 0xd949a756fbaC9CB1D1a6EC86e2B3B7154703164A with implementation
+Successfully linked proxy to implementation.
