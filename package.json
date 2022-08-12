@@ -16,6 +16,7 @@
     "dotenv": "^16.0.1"
   },
   "scripts": {
+    "upgrade:pollennft": "yarn hardhat run scripts/upgrade-pollen-nft.js --network ropsten",
     "deploy:pollennft": "yarn hardhat run scripts/deploy-pollen-nft.js --network ropsten",
     "deploy:pollen": "yarn hardhat run scripts/deploy-pollen.js --network ropsten"
   }

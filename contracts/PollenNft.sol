@@ -20,13 +20,14 @@ contract PollenNft is
         string tokenUri;
     }
 
-    string public URI = "https://jsonkeeper.com/b/W90P";
+    string public URI;
     uint256 public _newItemID;
 
     using CountersUpgradeable for CountersUpgradeable.Counter;
     CountersUpgradeable.Counter private _tokenIds;
 
     function initialize() public initializer {
+        URI = URI = "https://jsonkeeper.com/b/W90P";
         __ERC721_init("Pollen NFT", "PNFT");
         __Ownable_init();
     }
@@ -34,9 +35,9 @@ contract PollenNft is
     ///@dev required by the OZ UUPS module
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
-    function createToken(address _sender) public returns (uint256) {
+    function createToken(address _sender) public virtual returns (uint256) {
         _tokenIds.increment();
-        _newItemID = _tokenIds.current();
+        _newItemID = getCurrentTokenId() + 1;
 
         _mint(_sender, _newItemID);
         _setTokenURI(_newItemID, URI);
@@ -68,5 +69,9 @@ contract PollenNft is
 
     function burn(uint256 _tokenId) public {
         _burn(_tokenId);
+    }
+
+    function getCurrentTokenId() public view returns (uint256) {
+        return _tokenIds.current();
     }
 }
