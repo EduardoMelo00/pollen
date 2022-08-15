@@ -49,18 +49,6 @@ contract Pollen is
     using CountersUpgradeable for CountersUpgradeable.Counter;
     CountersUpgradeable.Counter private _tokenIds;
 
-    // function Initiliazer() public {
-
-    //     xrz = IERC20(0xDEcEF803dC694341Cf2dA8A1efB67AD81B397519); //atualizado
-    //     DAI = IERC20(0x31F42841c2db5173425b5223809CF3A38FEde360); //atualizado
-    //     PollenNFT = IPollenNft(0x5F68716878633B8f30405F606bF4512Cf8e575E0); // atualizado
-    //     DAIPriceFeed = AggregatorV3Interface(
-    //         0x2bA49Aaa16E6afD2a993473cfB70Fa8559B523cF
-    //     );
-    //     cToken = ICErc20(cTokenAddress); //atualizado
-
-    // }
-
     function initialize() public initializer {
         URI = "https://jsonkeeper.com/b/W90P";
         xrz = IERC20Upgradeable(0xDEcEF803dC694341Cf2dA8A1efB67AD81B397519); //atualizado
@@ -136,7 +124,6 @@ contract Pollen is
     }
 
     function getReward(address _owner, uint256 tokenIndex) public {
-        // require(PollenNFT.ownerOf(tokenIndex) == _owner,"You don't own any Pollen NFT." );
         require(
             PollenNFT.balanceOf(_owner) >= 1,
             "You don't have any Pollen NFT amount"
