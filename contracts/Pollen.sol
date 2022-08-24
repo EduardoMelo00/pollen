@@ -73,12 +73,11 @@ contract Pollen is
     ///@dev required by the OZ UUPS module
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
-    function stake(uint256 amount, uint256 period)
-        public
-        whenNotPaused
-        nonReentrant
-        returns (uint256)
-    {
+    function stake(
+        uint256 amount,
+        uint256 period,
+        string memory tokenUri
+    ) public whenNotPaused nonReentrant returns (uint256) {
         uint256 newItemId;
 
         require(amount > 0, "You need to input an mount bigger than 0");
@@ -89,7 +88,7 @@ contract Pollen is
         require(success, "not approved");
         DAI.transferFrom(msg.sender, address(this), amount);
 
-        newItemId = PollenNFT.createToken(msg.sender);
+        newItemId = PollenNFT.createToken(msg.sender, tokenUri);
         rewards[newItemId] = StakedToken(
             newItemId,
             amount,

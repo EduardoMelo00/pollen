@@ -20,7 +20,6 @@ contract PollenNft is
         string tokenUri;
     }
 
-    string public URI;
     uint256 public _newItemID;
 
     using CountersUpgradeable for CountersUpgradeable.Counter;
@@ -29,8 +28,6 @@ contract PollenNft is
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
     function initialize() public initializer {
-        URI = "https://jsonkeeper.com/b/W90P";
-
         __ERC721_init("Pollen NFT", "PNFT");
         __AccessControl_init();
 
@@ -46,7 +43,7 @@ contract PollenNft is
         onlyRole(MINTER_ROLE)
     {}
 
-    function createToken(address _sender)
+    function createToken(address _sender, string memory _tokenUri)
         public
         virtual
         onlyRole(MINTER_ROLE)
@@ -56,7 +53,7 @@ contract PollenNft is
         _newItemID = getCurrentTokenId() + 1;
 
         _mint(_sender, _newItemID);
-        _setTokenURI(_newItemID, URI);
+        _setTokenURI(_newItemID, _tokenUri);
         return _newItemID;
     }
 
