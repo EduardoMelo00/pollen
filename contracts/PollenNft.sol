@@ -38,6 +38,7 @@ contract PollenNft is ERC721URIStorage {
         OwnedNFT[] memory ownedNFTs = new OwnedNFT[](ownerBalance);
         uint256 currentItemsListIndex = 0;
 
+
         for (uint256 i = 1; i <= _tokenIds.current(); i++) {
             if (currentItemsListIndex >= ownerBalance) {
                 break;
