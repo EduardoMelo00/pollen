@@ -2,7 +2,9 @@ const { ethers } = require("hardhat");
 
 async function main() {
   const PollenNft = await ethers.getContractFactory("PollenNft");
-  const pollenNft = await PollenNft.deploy();
+  const pollenNft = await upgrades.deployProxy(PollenNft, [], {
+    initializer: "initialize",
+  });
 
   await pollenNft.deployed();
 

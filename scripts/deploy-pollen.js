@@ -1,8 +1,11 @@
-const { ethers } = require("hardhat");
+const { ethers, upgrades } = require("hardhat");
 
 async function main() {
   const Pollen = await ethers.getContractFactory("Pollen");
-  const pollen = await Pollen.deploy();
+
+  const pollen = await upgrades.deployProxy(Pollen, [], {
+    initializer: "initialize",
+  });
 
   await pollen.deployed();
 
@@ -12,8 +15,6 @@ async function main() {
 main().catch((error) => {
   console.error(error);
 });
-
-
 
 // async function main() {
 //   const Pollen = await ethers.getContractFactory("Pollen")
