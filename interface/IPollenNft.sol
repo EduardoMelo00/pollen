@@ -13,7 +13,7 @@ struct OwnedNFT {
     }
 
 
-    function createToken(address sender) external returns (uint256 id);
+    function createToken(address sender, string memory tokenUri) external returns (uint256 id);
 
     function balanceOf(address sender) external view returns (uint256 id);
 
