@@ -105,6 +105,6 @@ contract PollenNft is
         virtual
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        _grantRole(DEFAULT_ADMIN_ROLE, _to);
+        _grantRole(MINTER_ROLE, _to);
     }
 }

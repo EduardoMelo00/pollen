@@ -21,7 +21,6 @@ contract Pollen is
     ReentrancyGuardUpgradeable,
     PausableUpgradeable
 {
-    string public URI;
     IERC20Upgradeable public DAI;
     IPollenNft public PollenNFT;
     IERC20Upgradeable public xrz;
@@ -56,10 +55,9 @@ contract Pollen is
     CountersUpgradeable.Counter private _tokenIds;
 
     function initialize() public initializer {
-        URI = "https://jsonkeeper.com/b/W90P";
         xrz = IERC20Upgradeable(0xDEcEF803dC694341Cf2dA8A1efB67AD81B397519); //atualizado
         DAI = IERC20Upgradeable(0x31F42841c2db5173425b5223809CF3A38FEde360); //atualizado
-        PollenNFT = IPollenNft(0x3f6055A2716af802137B7C3f38eB38c7b44372cB); // atualizado
+        PollenNFT = IPollenNft(0x4D3F21e9a3aA56D7aa685B9f4744613C219F268C); // atualizado
         DAIPriceFeed = AggregatorV3Interface(
             0x2bA49Aaa16E6afD2a993473cfB70Fa8559B523cF
         );
@@ -79,6 +77,10 @@ contract Pollen is
 
     ///@dev required by the OZ UUPS module
     function _authorizeUpgrade(address) internal override onlyOwner {}
+
+	function setPollenNFT(address _pollenNFT) public onlyOwner {
+		PollenNFT = IPollenNft(_pollenNFT);
+	}
 
     function stake(
         uint256 amount,
