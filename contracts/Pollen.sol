@@ -55,20 +55,20 @@ contract Pollen is
     CountersUpgradeable.Counter private _tokenIds;
 
     function initialize() public initializer {
-        xrz = IERC20Upgradeable(0xDEcEF803dC694341Cf2dA8A1efB67AD81B397519); //atualizado
-        DAI = IERC20Upgradeable(0x31F42841c2db5173425b5223809CF3A38FEde360); //atualizado
-        PollenNFT = IPollenNft(0x4D3F21e9a3aA56D7aa685B9f4744613C219F268C); // atualizado
-        DAIPriceFeed = AggregatorV3Interface(
-            0x2bA49Aaa16E6afD2a993473cfB70Fa8559B523cF
-        );
-        cToken = ICErc20(cTokenAddress); //atualizado
-    
         cTokenAddress = 0xbc689667C13FB2a04f09272753760E38a95B998C;
         rewardFactor = 1; // 1 = 1 per cent
         rewardInterval = 86400 / 24 / 60; // 86400 = 1 day
         xrzPrice = 25; // DUX price
         pollenVault = 0x3A9ed39105d4e1a0719dAa16343A5b855B01100F;
         //rate = cToken.exchangeRateCurrent();
+
+        xrz = IERC20Upgradeable(0xDEcEF803dC694341Cf2dA8A1efB67AD81B397519); //atualizado
+        DAI = IERC20Upgradeable(0x31F42841c2db5173425b5223809CF3A38FEde360); //atualizado
+        PollenNFT = IPollenNft(0x9Fc639007aEAa930863446bcDAb0A2F3D08FFf8b); // atualizado
+        DAIPriceFeed = AggregatorV3Interface(
+            0x2bA49Aaa16E6afD2a993473cfB70Fa8559B523cF
+        );
+        cToken = ICErc20(cTokenAddress); //atualizado
 
         __Ownable_init();
         __ReentrancyGuard_init();
@@ -87,7 +87,7 @@ contract Pollen is
         uint256 period,
         string memory tokenUri
     ) public whenNotPaused nonReentrant returns (uint256) {
-        uint256 newItemId;
+         uint256 newItemId;
 
         require(amount > 0, "You need to input an mount bigger than 0");
 
