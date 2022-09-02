@@ -50,7 +50,7 @@ contract PollenNft is
         returns (uint256)
     {
         _tokenIds.increment();
-        _newItemID = getCurrentTokenId() + 1;
+        _newItemID = _tokenIds.current();
 
         _mint(_sender, _newItemID);
         _setTokenURI(_newItemID, _tokenUri);

@@ -64,7 +64,7 @@ contract Pollen is
 
         xrz = IERC20Upgradeable(0xDEcEF803dC694341Cf2dA8A1efB67AD81B397519); //atualizado
         DAI = IERC20Upgradeable(0x31F42841c2db5173425b5223809CF3A38FEde360); //atualizado
-        PollenNFT = IPollenNft(0x9Fc639007aEAa930863446bcDAb0A2F3D08FFf8b); // atualizado
+        PollenNFT = IPollenNft(0x41fBF30640C1411cB9d98D3c40D1896ecaE08191); // atualizado
         DAIPriceFeed = AggregatorV3Interface(
             0x2bA49Aaa16E6afD2a993473cfB70Fa8559B523cF
         );
@@ -179,12 +179,12 @@ contract Pollen is
 
         uint256 currentItemsListIndex = 0;
 
-        for (uint256 i = 0; i < allOwnedNFTs.length; i++) {
-            if (rewards[allOwnedNFTs[i].tokenId].startTimestamp > 0) {
-                ownedNFTs[currentItemsListIndex].tokenId = allOwnedNFTs[i].tokenId;
-                ownedNFTs[currentItemsListIndex].tokenUri = allOwnedNFTs[i].tokenUri;
-                currentItemsListIndex++;
-            }
+        for (uint256 i = 1; i <= allOwnedNFTs.length; i++) {
+			if (rewards[allOwnedNFTs[i-1].tokenId].startTimestamp > 0) {
+				ownedNFTs[currentItemsListIndex].tokenUri = allOwnedNFTs[i-1].tokenUri;
+				ownedNFTs[currentItemsListIndex].tokenId = allOwnedNFTs[i-1].tokenId;
+				currentItemsListIndex++;
+			}
         }
 
         return ownedNFTs;
