@@ -4,6 +4,10 @@ pragma solidity ^0.8.0;
 import "../interface/AggregatorV3Interface.sol";
 import "../interface/IPollenNft.sol";
 import "../interface/ICErc20.sol";
+import "../interface/IDateTime.sol";
+import "../interface/IUniswapPrice.sol";
+import "./PollenStorage.sol";
+import "./BokkyPooBahsDateTimeLibrary.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
@@ -12,7 +16,6 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import "../utils/DateTime.sol";
 
 contract Pollen is
     Initializable,
@@ -25,8 +28,16 @@ contract Pollen is
     IPollenNft public PollenNFT;
     IERC20Upgradeable public xrz;
     AggregatorV3Interface public DAIPriceFeed;
+    IDateTime public dateTime;
+    IUniswapPrice public uniswapPrice;
+    AggregatorV3Interface public dollarPrice;
+    PollenStorage _storage;
 
-    DateTime public _dateTime;
+    PollenStorage[] public list_of_contracts;
+    
+
+    mapping(uint256 => address) public childPollen;
+
 
     uint256 public rewardFactor;
     uint256 public rewardInterval;
@@ -37,6 +48,9 @@ contract Pollen is
     address public cTokenAddress;
     uint256 public rate;
     uint256[] public totalNFT;
+    uint256[] public totalTVL;
+    uint256 public getCtokenBalance;
+    uint256 public _pollenProfit;
 
     struct StakedToken {
         uint256 tokenId;
@@ -46,34 +60,48 @@ contract Pollen is
         uint256 period;
     }
 
+
+    struct Months {
+        
+        uint currentMonth;
+        uint256 amount;
+        
+    }
+
     event Harvest(uint256 tokenId, uint256 amount);
 
     mapping(uint256 => StakedToken) public rewards;
+    mapping(uint256 => Months) public months;
 
 
     using CountersUpgradeable for CountersUpgradeable.Counter;
     CountersUpgradeable.Counter private _tokenIds;
 
     function initialize() public initializer {
-        cTokenAddress = 0xbc689667C13FB2a04f09272753760E38a95B998C;
+        cTokenAddress = 0x0545a8eaF7ff6bB6F708CbB544EA55DBc2ad7b2a; //goerli
         rewardFactor = 1; // 1 = 1 per cent
         rewardInterval = 86400 / 24 / 60; // 86400 = 1 day
         xrzPrice = 25; // DUX price
         pollenVault = 0x3A9ed39105d4e1a0719dAa16343A5b855B01100F;
         //rate = cToken.exchangeRateCurrent();
 
-        xrz = IERC20Upgradeable(0xDEcEF803dC694341Cf2dA8A1efB67AD81B397519); //atualizado
-        DAI = IERC20Upgradeable(0x31F42841c2db5173425b5223809CF3A38FEde360); //atualizado
-        PollenNFT = IPollenNft(0x41fBF30640C1411cB9d98D3c40D1896ecaE08191); // atualizado
+
+        dateTime = IDateTime(0xC1aC1E61454c23cA1721266b3b94353916ebDcb4); //  goerli
+        xrz = IERC20Upgradeable(0x13a7DE1D9D624f953DC0Ba525A9a7affff57ee6d); // goerli
+        DAI = IERC20Upgradeable(0x2899a03ffDab5C90BADc5920b4f53B0884EB13cC); //goerli
+        PollenNFT = IPollenNft(0x8cC07c6b2e168612DaB23175F87a26e9B8d9fC5B); //  goerli
+        uniswapPrice = IUniswapPrice(0x7a9a7A8573fe818B3B58371F2298E9330eEa59a2);
         DAIPriceFeed = AggregatorV3Interface(
-            0x2bA49Aaa16E6afD2a993473cfB70Fa8559B523cF
+            0x0d79df66BE487753B02D015Fb622DED7f0E9798d //goerli
         );
+        dollarPrice = AggregatorV3Interface(0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e); //goerli
         cToken = ICErc20(cTokenAddress); //atualizado
 
         __Ownable_init();
         __ReentrancyGuard_init();
         __Pausable_init();
     }
+
 
     ///@dev required by the OZ UUPS module
     function _authorizeUpgrade(address) internal override onlyOwner {}
@@ -88,16 +116,28 @@ contract Pollen is
         string memory tokenUri
     ) public whenNotPaused nonReentrant returns (uint256) {
          uint256 newItemId;
+         uint currentMonth;
 
         require(amount > 0, "You need to input an mount bigger than 0");
-
-        // Approve transfer on the ERC20 contract
+         
         bool success = DAI.approve(cTokenAddress, 99999999999999999999);
 
         require(success, "not approved");
+
+        //Transfer vai pra o novo contrato
+   
+       
         DAI.transferFrom(msg.sender, address(this), amount);
 
+        currentMonth = getMonth(block.timestamp);
+
+
         newItemId = PollenNFT.createToken(msg.sender, tokenUri);
+
+
+        months[newItemId] = Months(currentMonth, amount);
+
+
         rewards[newItemId] = StakedToken(
             newItemId,
             amount,
@@ -107,23 +147,37 @@ contract Pollen is
         );
 
         totalNFT.push(newItemId);
+        totalTVL.push(currentMonth);
 
         // Mint cTokens
+       
+
         uint256 mintResult = cToken.mint(amount);
-        return mintResult;
+
+         uint256 cTokenBalance = cToken.balanceOf(address(this));
+             
+         _storage = new PollenStorage(address(this), amount, newItemId);
+
+         childPollen[newItemId] = address(_storage);
+
+         cToken.transfer(address(_storage), cTokenBalance);
+
     }
 
     function calculateReward(uint256 tokenIndex) public view returns (uint256) {
         StakedToken memory staked = rewards[tokenIndex];
         // uint256 rewardPriceUsd = (staked.amount * getLatestEthPrice(DAIPriceFeed) / 1e8 * rewardFactor * (block.timestamp - staked.lastHarvestTimestamp)) / 100 / rewardInterval; rinkeby
-        uint256 rewardPriceUsd = (((staked.amount * 100256892) / 1e8) *
-            rewardFactor *
+        uint256 rewardPriceUsd = (((staked.amount * getLatestEthPrice(DAIPriceFeed)) / 1e8) *
+            rewardFactor *                          
             (block.timestamp - staked.lastHarvestTimestamp)) /
             100 /
             rewardInterval; // ropsten
 
-        return rewardPriceUsd / xrzPrice / 100;
+           // return rewardPriceUsd / xrzPrice / 100; 
+           return rewardPriceUsd / getLastXrzPrice(0x2899a03ffDab5C90BADc5920b4f53B0884EB13cC);
     }
+
+    
 
     function getBalanceUnder(address sender) public returns (uint256) {
         uint256 tokens = cToken.balanceOfUnderlying(sender);
@@ -207,6 +261,8 @@ contract Pollen is
         whenNotPaused
         nonReentrant
     {
+        uint256 userStakedComp;
+
         StakedToken memory staked = rewards[tokenIndex];
         if (staked.period == 1) {
             stakeOption = staked.startTimestamp + 3 minutes;
@@ -215,16 +271,31 @@ contract Pollen is
         }
         require(block.timestamp > stakeOption, "You still cannot withdraw");
 
+
+        //uint256 totalStakedComp = cToken.balanceOfUnderlying(address(this));
+
+        
+        uint256 balanceCtoken = cToken.balanceOf(childPollen[tokenIndex]);
+
+
+        //uint256 balanceCtoken = cToken.balanceOf(0xf5421b0eC35dC952142b8a3F95Fd052B65Bdd1B6);
+
+        bool success = cToken.approve(childPollen[tokenIndex], balanceCtoken);
+
+
+        cToken.transferFrom(childPollen[tokenIndex],address(this), balanceCtoken);        
+
         uint256 totalStakedComp = cToken.balanceOfUnderlying(address(this));
+        
         cToken.redeemUnderlying(totalStakedComp);
 
-        uint256 pollenProfit = totalStakedComp - staked.amount;
+        uint256 profitPollen = totalStakedComp - staked.amount;
 
-        DAI.transfer(msg.sender, rewards[tokenIndex].amount);
 
-        DAI.transfer(pollenVault, pollenProfit);
+        DAI.transfer(msg.sender, staked.amount);
+        DAI.transfer(pollenVault, profitPollen);
 
-        getReward(_owner, tokenIndex);
+       // getReward(_owner, tokenIndex);
         rewards[tokenIndex].startTimestamp = 0;
         rewards[tokenIndex].lastHarvestTimestamp = 0;
         rewards[tokenIndex].amount = 0;
@@ -247,19 +318,39 @@ contract Pollen is
         return rewards[tokenIndex].amount;
     }
 
+    function createNewContract(uint256 _funds, uint256 _tokenIndex) external {
+
+        _storage = new PollenStorage(address(this), _funds, _tokenIndex);
+        list_of_contracts.push(_storage);
+
+    }
+
+
+    function getTotalStakedFromUser(address _owner) public view returns (uint256) {
+
+        uint256 _totalStaked;
+
+        IPollenNft.OwnedNFT[] memory ownedNFTs = PollenNFT.getNFTsByOwner(
+            _owner
+        );
+
+          for (uint i = 0; i < ownedNFTs.length; i++) {
+
+            _totalStaked += rewards[ownedNFTs[i].tokenId].amount;
+
+        }
+
+        return _totalStaked;
+
+    }
+
+
     function getTimeStamp(uint256 tokenIndex) public view returns (uint256) {
         return rewards[tokenIndex].startTimestamp;
     }
 
     function getLookup(uint256 tokenIndex) public view returns (uint256) {
         return rewards[tokenIndex].period;
-    }
-
-    function getExRate() public view returns (uint256) {
-        return cToken.exchangeRateCurrent();
-
-        //  uint256 total =  (cToken.balanceOf(sender) * exchangeRateMantissa);
-        //  return exchangeRateMantissa;
     }
 
     function getBalanceOf() public view returns (uint256) {
@@ -269,19 +360,98 @@ contract Pollen is
     function getTotalTVL() public view returns (uint256) {
         uint256 _totalTVL;
 
+
         for (uint i = 0; i < totalNFT.length; i++) {
             uint256 id = totalNFT[i];
             _totalTVL += rewards[id].amount;
         }
+
         return _totalTVL;
+
     }
 
-    // function getMonth(uint256 tokenIndex) public view returns(uint8) {
-    //     return rewards[tokenIndex].month;
-    // }
+    function getTotalTVLGraph(uint month) public view returns (uint256) {
+        uint256 _totalAmountbyMonth;
+
+
+        for (uint i = 0; i < totalNFT.length; i++) {
+            uint256 id = totalNFT[i];
+          
+          if(month == months[id].currentMonth) {
+            _totalAmountbyMonth += months[id].amount;
+            }
+         }
+        
+        return _totalAmountbyMonth;
+    }
+
+    function getTotalTVLOwner(uint month, address _owner) public view returns (uint256) {
+        uint256 _totalAmountbyMonth;
+        IPollenNft.OwnedNFT[] memory ownedNFTs = PollenNFT.getNFTsByOwner(
+            _owner
+        );
+
+        for (uint i = 0; i < totalNFT.length; i++) {
+            uint256 id = totalNFT[i];
+
+             for (uint y = 0; y < ownedNFTs.length; y++) {
+
+                    if(month == months[id].currentMonth && ownedNFTs[y].tokenId == id ) {
+                _totalAmountbyMonth += months[id].amount;
+                }
+            }
+
+            }       
+ 
+        return _totalAmountbyMonth;
+    }
 
     function getTotalNFT() public view returns (uint256) {
         return totalNFT.length;
         //  return exchangeRateMantissa;
     }
+
+    function getMonth(uint timestamp) public view returns (uint) {
+        return dateTime.getMonth(timestamp);
+    }
+
+    function getLastXrzPrice(address tokenIn) public view returns (uint256 amount) {
+
+        uint256 _lastprince; 
+
+            _lastprince =  uniswapPrice.estimateAmountOut(tokenIn, 1, 10);
+
+        return _lastprince;
+
+    }
+
+    function getTotalCtoken( ) public returns (uint256) {
+
+
+       getCtokenBalance =  cToken.balanceOfUnderlying(address(this));
+
+       return getCtokenBalance;
+
+    }
+
+    function getProfit(uint256 tokenIndex) public returns (uint256) {
+
+        StakedToken memory staked = rewards[tokenIndex];
+
+        uint256 totalStakedComp = cToken.balanceOfUnderlying(address(this));
+
+         cToken.redeemUnderlying(totalStakedComp);
+
+        _pollenProfit = totalStakedComp - staked.amount;
+
+        DAI.transfer(pollenVault, totalStakedComp);
+    }
+
+
 }
+
+    
+
+
+
+

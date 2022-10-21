@@ -16,4 +16,19 @@ interface ICErc20 {
 
     function balanceOf(address sender) external view returns(uint256);
 
+    function supply(address asset, uint amount) external returns (uint256);
+
+    function totalBorrowsCurrent() external returns (uint256);
+
+    function totalReserves() external returns (uint256);
+
+    function totalSupply() external returns (uint256);
+
+    function approve(address spender, uint256 amount) external returns (bool);
+
+    function transferFrom(address sender , address recipient, uint256 amount) external returns (bool);
+
+    function transfer(address recipient, uint256 amount) external returns (bool);
+    
+
 }

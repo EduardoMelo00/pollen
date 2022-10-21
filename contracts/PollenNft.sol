@@ -15,6 +15,7 @@ contract PollenNft is
     ERC721URIStorageUpgradeable,
     AccessControlUpgradeable
 {
+
     struct OwnedNFT {
         uint256 tokenId;
         string tokenUri;
@@ -85,6 +86,13 @@ contract PollenNft is
         _burn(_tokenId);
     }
 
+
+
+    function getBlock() public view returns (uint256) {
+        return block.number;
+    }
+
+
     function getCurrentTokenId() public view returns (uint256) {
         return _tokenIds.current();
     }
@@ -99,7 +107,6 @@ contract PollenNft is
         return super.supportsInterface(interfaceId);
     }
 
-    // used to grant minter role to the Pollen Contract after deploying it
     function grantMinterRole(address _to)
         public
         virtual
