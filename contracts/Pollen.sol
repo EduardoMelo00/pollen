@@ -31,14 +31,16 @@ contract Pollen is
     IUniswapPrice public uniswapPrice;
     AggregatorV3Interface public dollarPrice;
 
-    uint256 rewardFactor;
-    address pollenVault; 
-    uint256 rewardInterval;
-    address cTokenAddress;
-    uint256 stakeOption; 
+    address constant cTokenAddress = 0x0545a8eaF7ff6bB6F708CbB544EA55DBc2ad7b2a; //goerli
+    uint256 rewardFactor = 1; // 1 = 1 per cent
+    uint256 constant rewardInterval = 86400 / 24 / 60; // 86400 = 1 day
+    address  pollenVault = 0x986039D42D25204339bD352Bc2b1E13dC87C8521;
+    uint256 stakeOption;
     uint256[] totalNFT;
     uint256[] totalTVL;
     ICErc20 cToken;
+
+
 
     struct StakedToken {
         uint256 tokenId;
@@ -54,9 +56,13 @@ contract Pollen is
     }
 
     event Harvest(uint256 tokenId, uint256 amount);
-    event Staked(uint256 tokenId, uint256 amount, uint256 period, string tokenUri);
+    event Staked(
+        uint256 tokenId,
+        uint256 amount,
+        uint256 period,
+        string tokenUri
+    );
     event Unstaked(address owner, uint256 tokenIndexId);
-    
 
     mapping(uint256 => StakedToken) rewards;
     mapping(uint256 => Months) months;
@@ -65,18 +71,13 @@ contract Pollen is
     CountersUpgradeable.Counter private _tokenIds;
 
     function initialize() public initializer {
-        cTokenAddress = 0x0545a8eaF7ff6bB6F708CbB544EA55DBc2ad7b2a; //goerli
-        rewardFactor = 1; // 1 = 1 per cent
-        rewardInterval = 86400 / 24 / 60; // 86400 = 1 day
-        pollenVault = 0x986039D42D25204339bD352Bc2b1E13dC87C8521;
-
         dateTime = IDateTime(0xC1aC1E61454c23cA1721266b3b94353916ebDcb4); //  goerli
         xrz = IERC20Upgradeable(0x13a7DE1D9D624f953DC0Ba525A9a7affff57ee6d); // goerli
         DAI = IERC20Upgradeable(0x2899a03ffDab5C90BADc5920b4f53B0884EB13cC); //goerli
         PollenNFT = IPollenNft(0x8cC07c6b2e168612DaB23175F87a26e9B8d9fC5B); //  goerli
         uniswapPrice = IUniswapPrice(
             0x7a9a7A8573fe818B3B58371F2298E9330eEa59a2
-        );
+        ); // mainnet
         DAIPriceFeed = AggregatorV3Interface(
             0x0d79df66BE487753B02D015Fb622DED7f0E9798d //goerli
         );
@@ -96,6 +97,15 @@ contract Pollen is
     function setPollenNFT(address _pollenNFT) public onlyOwner {
         PollenNFT = IPollenNft(_pollenNFT);
     }
+
+    function setRewardFactor(uint256 _rewardFactor) public onlyOwner {
+        rewardFactor = _rewardFactor;
+    }
+
+    function setPollenVault(address _pollenVault) public onlyOwner {
+        pollenVault = _pollenVault;
+    }
+
 
     function stake(
         uint256 amount,
@@ -130,10 +140,14 @@ contract Pollen is
         totalNFT.push(newItemId);
         totalTVL.push(currentMonth);
 
+
+        // Transfer to compound 
+        // sender -> address(this)
+
+
         cToken.mint(amount);
 
-        emit Staked(newItemId ,amount, period, tokenUri);
-
+        emit Staked(newItemId, amount, period, tokenUri);
     }
 
     function calculateReward(uint256 tokenIndex) public view returns (uint256) {
@@ -143,7 +157,7 @@ contract Pollen is
             rewardFactor *
             (block.timestamp - staked.lastHarvestTimestamp)) /
             100 /
-            rewardInterval; 
+            rewardInterval;
 
         return
             rewardPriceUsd /
@@ -216,7 +230,6 @@ contract Pollen is
         public
         whenNotPaused
         nonReentrant
-        
     {
         StakedToken memory staked = rewards[tokenIndex];
 
@@ -225,9 +238,15 @@ contract Pollen is
         } else {
             stakeOption = staked.startTimestamp + 10 minutes;
         }
-        require(block.timestamp > stakeOption, "You still cannot withdraw");        
+        
+        require(block.timestamp > stakeOption, "You still cannot withdraw");
 
+        // Return amount in DAI - TOTALTVL + PROFIT(from compound) - de acordo o tempo 
         uint256 totalStakedComp = cToken.balanceOfUnderlying(address(this));
+        require(
+            PollenNFT.balanceOf(_owner) >= 1,
+            "You don't have any Pollen NFT amount"
+        );
 
         uint256 returnTotalTVL = getTotalTVL();
 
@@ -239,7 +258,6 @@ contract Pollen is
 
         cToken.redeemUnderlying(returnTotalunstake);
 
-        
         rewards[tokenIndex].startTimestamp = 0;
         rewards[tokenIndex].lastHarvestTimestamp = 0;
         rewards[tokenIndex].amount = 0;
@@ -248,12 +266,10 @@ contract Pollen is
         getReward(_owner, tokenIndex);
         DAI.transfer(msg.sender, staked.amount);
         DAI.transfer(pollenVault, profitCalc);
-       
 
         emit Unstaked(_owner, tokenIndex);
-
-
     }
+
 
     function getLatestEthPrice(AggregatorV3Interface _tokenPriceFeed)
         public
